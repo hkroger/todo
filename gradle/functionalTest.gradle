@@ -1,4 +1,3 @@
-apply plugin: 'jetty'
 apply plugin: 'groovy'
 
 configurations {
@@ -10,7 +9,7 @@ ext.seleniumGroup = 'org.seleniumhq.selenium'
 ext.seleniumVersion = '2.32.0'
 
 dependencies {
-    providedCompile 'javax.servlet:servlet-api:2.5'
+    providedCompile 'javax.servlet:javax.servlet-api:3.1.0'
     runtime 'javax.servlet:jstl:1.1.2'
     testCompile 'org.codehaus.groovy:groovy:2.0.6'
     testCompile 'junit:junit:4.11'

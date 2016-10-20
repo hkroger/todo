@@ -2,6 +2,12 @@ apply from: "$rootDir/gradle/integrationTest.gradle"
 
 dependencies {
     compile project(':model')
+    compile group: 'com.datastax.cassandra', name: 'cassandra-driver-core', version: '3.1.1'
+    compile group: 'com.datastax.cassandra', name: 'cassandra-driver-mapping', version: '3.1.1'
+    compile group: 'io.zipkin.brave', name: 'brave-web-servlet-filter', version: '3.14.1'
+
+
+
     testCompile 'junit:junit:4.11'
 }
 

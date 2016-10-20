@@ -1,13 +1,19 @@
 apply plugin: 'war'
-apply plugin: 'jetty'
+apply from: 'https://raw.github.com/akhikhl/gretty/master/pluginScripts/gretty.plugin'
 apply from: "$rootDir/gradle/functionalTest.gradle"
 apply from: "$rootDir/gradle/publishMaven.gradle"
 apply from: "$rootDir/gradle/sshDeploy.gradle"
 apply from: "$rootDir/gradle/smokeTest.gradle"
 
+
 dependencies {
     compile project(':repository')
-    providedCompile 'javax.servlet:servlet-api:2.5'
+    compile group: 'io.zipkin.brave', name: 'brave-web-servlet-filter', version: '3.14.1'
+    compile group: 'io.zipkin.reporter', name: 'zipkin-sender-kafka08', version: '0.6.2'
+    compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.1.7'
+
+    providedCompile group: 'javax.servlet', name: 'javax.servlet-api', version: '3.1.0'
+
     runtime 'javax.servlet:jstl:1.1.2'
     runtime 'taglibs:standard:1.1.2'
 }
@@ -28,8 +34,4 @@ war {
         include 'build-info.properties'
         into('WEB-INF/classes')
     }
-}
-
-jettyRun {
-	contextPath = 'todo'
 }
