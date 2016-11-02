@@ -1,7 +1,14 @@
 package com.manning.gia.todo.web;
 
-import com.github.kristofa.brave.*;
-import com.github.kristofa.brave.http.*;
+import com.github.kristofa.brave.Brave;
+import com.github.kristofa.brave.LocalTracer;
+import com.github.kristofa.brave.ServerRequestInterceptor;
+import com.github.kristofa.brave.ServerResponseInterceptor;
+import com.github.kristofa.brave.http.DefaultSpanNameProvider;
+import com.github.kristofa.brave.http.HttpServerRequestAdapter;
+import com.github.kristofa.brave.http.HttpServerResponseAdapter;
+import com.github.kristofa.brave.http.SpanNameProvider;
+import com.github.kristofa.brave.servlet.BraveServletFilter;
 import com.github.kristofa.brave.servlet.ServletHttpServerRequest;
 import com.manning.gia.todo.model.ToDoItem;
 import com.manning.gia.todo.repository.CassandraToDoRepository;
@@ -27,7 +34,14 @@ public class ToDoServlet extends HttpServlet {
 
     @Override
     public void init() {
-        Brave brave = initBrave();
+        ServletContext ctx = getServletContext();
+        String bootstrapServers = ctx.getInitParameter("ZipkinKafkaBootstrapServers");
+        Brave brave = new Brave.Builder("Todo Application")
+                .reporter(AsyncReporter.builder(KafkaSender.builder().bootstrapServers(bootstrapServers).build()).build())
+                .build();
+
+        ctx.setAttribute(BRAVE_INSTANCE, brave);
+        ctx.addFilter("BraveServletFilter", new BraveServletFilter(brave.serverRequestInterceptor(), brave.serverResponseInterceptor(), new DefaultSpanNameProvider()));
         initRepository(brave);
     }
 
@@ -38,29 +52,12 @@ public class ToDoServlet extends HttpServlet {
         repo.setBrave(brave);
     }
 
-    private Brave initBrave() {
-        ServletContext ctx = getServletContext();
-        String bootstrapServers = ctx.getInitParameter("ZipkinKafkaBootstrapServers");
-        Brave brave = new Brave.Builder("Todo Application")
-                .reporter(AsyncReporter.builder(KafkaSender.builder().bootstrapServers(bootstrapServers).build()).build())
-                .build();
-
-        ctx.setAttribute(BRAVE_INSTANCE, brave);
-        return brave;
-    }
-
     private Brave getBrave() {
         return (Brave) getServletContext().getAttribute(BRAVE_INSTANCE);
     }
 
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // Log request
-        ServerRequestInterceptor requestInterceptor = getBrave().serverRequestInterceptor();
-        ServerResponseInterceptor responseInterceptor = getBrave().serverResponseInterceptor();
-        SpanNameProvider spanNameProvider = new DefaultSpanNameProvider();
-        requestInterceptor.handle(new HttpServerRequestAdapter(new ServletHttpServerRequest((HttpServletRequest) request), spanNameProvider ));
-
         String servletPath = request.getServletPath();
         LocalTracer localTracer = getBrave().localTracer();
         localTracer.startNewSpan("Todo Service Process Request", servletPath);
@@ -68,9 +65,6 @@ public class ToDoServlet extends HttpServlet {
         localTracer.finishSpan();
         RequestDispatcher dispatcher = request.getRequestDispatcher(view);
         dispatcher.forward(request, response);
-
-        // Log response
-        responseInterceptor.handle(new HttpServerResponseAdapter(() -> response.getStatus()));
     }
 
     private String processRequest(String servletPath, HttpServletRequest request) {
